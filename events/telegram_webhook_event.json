@@ -1,0 +1,23 @@
+{
+  "body": {
+    "update_id": 711098778,
+    "message": {
+      "message_id": 67,
+      "from": {
+        "id": 812259276,
+        "is_bot": false,
+        "first_name": "FirstName",
+        "username": "UserName",
+        "language_code": "en"
+      },
+      "chat": {
+        "id": 812259276,
+        "first_name": "FirstName",
+        "username": "UserName",
+        "type": "private"
+      },
+      "date": 1685447641,
+      "text": "Test"
+    }
+  }
+}
