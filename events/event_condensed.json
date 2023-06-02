@@ -1,23 +1,30 @@
 {
   "body": {
-    "update_id": 711098778,
+    "update_id": 1234567890,
     "message": {
       "message_id": 67,
       "from": {
-        "id": 812259276,
+        "id": 123456789,
         "is_bot": false,
         "first_name": "FirstName",
         "username": "UserName",
         "language_code": "en"
       },
+      "forward_from": {
+        "id": 123456789,
+        "is_bot": false,
+        "first_name": "👌 FirstName",
+        "username": "UserName",
+        "language_code": "en"
+      },
       "chat": {
-        "id": 812259276,
+        "id": 123456789,
         "first_name": "FirstName",
         "username": "UserName",
         "type": "private"
       },
       "date": 1685447641,
-      "text": "Test"
+      "text": "User's message here"
     }
   }
 }

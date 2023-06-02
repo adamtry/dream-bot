@@ -2,3 +2,5 @@ requests
 python-telegram-bot
 python-dotenv
 dacite
+boto3
+mypy-boto3-dynamodb

@@ -13,8 +13,8 @@ build:
 deploy:
 	sam deploy --stack-name dream-bot --profile dream-bot
 update-deps:
-	make build && sam deploy --guided
+	make build && sam deploy --stack-name dream-bot --profile dream-bot --capabilities CAPABILITY_IAM
 stream-logs:
-	sam logs --stack-name {insert stack name here} --tail --profile dream-bot --format short
+	aws logs tail "/aws/lambda/dream-bot" --follow --profile dream-bot --format short
 sync:
 	sam sync --stack-name dream-bot --watch --profile dream-bot

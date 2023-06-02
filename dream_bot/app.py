@@ -1,67 +1,82 @@
 import json
 import traceback
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
+import dacite.exceptions
 from dacite import from_dict
 
-from telegram_integration.telegram_bot import handle_bot_message
-from telegram_integration.telegram_gateway import TelegramBot, update_commands
-from telegram_integration.domain_objects import TelegramMessage
+from telegram_integration.domain_objects import TelegramMessage, TelegramChat
+from telegram_integration.telegram_gateway import TelegramBot
+from telegram_integration.telegram_handler import handle_bot_message
+
+
+class MessageProcessingError(Exception):
+    pass
 
 
 class LambdaEventInput:
     def __init__(self, event: str | dict):
         self.event = event
         self.body = self.resolve_body(self.event)
-        message: dict | None = self.body.get("message")
-        if message is None:
-            raise Exception(f"No message in body {self.body}")
-        self.message: dict = message
+        self.message: dict = self.body.get("message") if self.body else None
 
     @staticmethod
-    def resolve_body(event: str | dict) -> dict:
-        # This method is to handle the different ways that the Lambda can receive events (API Gateway, Postman, Local run, etc.)
-        # logging.info(f"Raw event: {event}")
-        body = None
+    def resolve_body(event: dict) -> dict:
+        # event is a dict but message is a json string
         try:
-            if isinstance(event, str):
-                # Throws TypeError if event is not a string
-                body = json.loads(event)["body"]
-            else:
-                # Throws JSONDecodeError if event is not JSON
-                body = json.loads(event["body"])
-        except (TypeError, json.JSONDecodeError, KeyError):
-            if isinstance(event, dict):
-                body = event.get("body")
-        if isinstance(body, str):
-            body = json.loads(body)
-        assert isinstance(body, dict), f"Invalid body type: {type(body)}"
-        while "body" in body.keys():
-            body = body["body"]
-        # logging.info(f"Event body: {body}")
+            body: dict = json.loads(event['body'])
+        except json.decoder.JSONDecodeError:
+            raise MessageProcessingError(f"Failed to parse event body: {event}")
         return body
 
 
-def main(raw_event: str | dict):
-    event = LambdaEventInput(raw_event)
-    telegram_message = from_dict(data_class=TelegramMessage, data=event.message)
-    handle_bot_message(telegram_message)
-
-
-def lambda_handler(event: str | dict, context: object = None) -> dict:
-    print(f"\n=🚀= START {datetime.now().strftime('%H:%M:%S')} =🚀=")
+def make_telegram_bot_from_event(raw_event: str | dict) -> TelegramBot:
     try:
-        main(event)
-        status = {"statusCode": 200}
+        data = raw_event.get("body").get("message").get("chat")
+    except AttributeError:
+        return None
+    chat = dacite.from_dict(data_class=TelegramChat, data=data)
+    telegram_bot = TelegramBot(chat)
+    return telegram_bot
+
+
+def lambda_handler(event: dict, context: object = None) -> dict:
+    def get_british_time():
+        return datetime.now(ZoneInfo("Europe/London")).strftime('%H:%M:%S')
+
+    def end_execution(tg_bot: TelegramBot | None, status_code: int = 200, message: str = None):
+        if status_code != 200:
+            traceback.print_exc()
+        if message is not None:
+            print(message)
+            if TelegramBot:
+                print(tg_bot)
+                tg_bot.send_message(message)
+        return {"statusCode": status_code}
+
+    bot = None
+    try:
+        print(f"=🚀= START {get_british_time()} =🚀=")
+        print(json.dumps(event.get("body")))
+        lambda_event = LambdaEventInput(event)
+        chat = from_dict(data_class=TelegramChat, data=lambda_event.message.get("chat"))
+        bot = TelegramBot(chat)
+        if bot is None:
+            raise MessageProcessingError(f"Invalid event: {event}")
+
+        if lambda_event.message is None:
+            print(f"No message found in event: {lambda_event.event}")
+            raise MessageProcessingError(f"No message found in event: {lambda_event.event}")
+        lambda_event.message["date"] = datetime.fromtimestamp(lambda_event.message["date"]).date()
+        telegram_message = from_dict(data_class=TelegramMessage, data=lambda_event.message)
+        handle_bot_message(bot, telegram_message)
+        return end_execution(bot, 200, " 🟢 Complete ")
+    except dacite.exceptions.MissingValueError as e:
+        return end_execution(bot, 400, f" 🚨 Failed to parse message body. 🚨 Reason: {e}")
+    except MessageProcessingError as e:
+        return end_execution(bot, 400, f" 🚨 Failed to process message. 🚨 Reason: {e}")
     except Exception as e:
-        print(f"Failed to parse event{event}. Stacktrace: {e}")
-        traceback.print_exc()
-        status = {"statusCode": 500}
+        return end_execution(bot, 500, f" 🚨 Failed. 🚨 Reason: {e}")
     finally:
-        print(f"\n=🔕= END {datetime.now().strftime('%H:%M:%S')} =🔕=")
-        return status
-
-
-if __name__ == "__main__":
-    bot = TelegramBot()
-    update_commands()
+        print(f"=🔕= END {get_british_time()} =🔕=")

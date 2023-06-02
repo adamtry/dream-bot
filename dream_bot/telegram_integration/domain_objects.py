@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 
 
 @dataclass
@@ -34,7 +34,7 @@ class TelegramMessage:
     text: str
     message_from: TelegramUser | None
     sender_chat: TelegramChat | None
-    date: int
+    date: date
     chat: TelegramChat
     forward_from: TelegramUser | None
     forward_from_chat: TelegramChat | None
@@ -42,8 +42,7 @@ class TelegramMessage:
     document: dict | None
 
     def __repr__(self):
-        date = datetime.fromtimestamp(self.date)
-        formatted_date = date.strftime("%d.%m.%Y %H:%M:%S")
+        formatted_date = self.date.strftime("%d.%m.%Y %H:%M:%S")
         return f"TelegramMessage(text={self.text}, message_from={self.message_from}, sender_chat={self.sender_chat}, " \
                f"date={formatted_date}, chat={self.chat}, forward_from={self.forward_from}, " \
                f"forward_from_chat={self.forward_from_chat}, entities={self.entities}, document={self.document})"

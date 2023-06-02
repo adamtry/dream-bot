@@ -1,19 +1,20 @@
 import os
-from dataclasses import asdict
 
 import requests
 from dotenv import load_dotenv
 
-from .commands import Command, Commands
+from .commands import Command, COMMANDS
+from .domain_objects import TelegramChat
 
 load_dotenv()  # for local development
-token = os.environ.get("TELEGRAM_BOT_TOKEN")
-assert token is not None, "TELEGRAM_BOT_TOKEN environment variable is not set"
-BOT_BASE_URL = f"https://api.telegram.org/bot{token.strip()}"
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+assert TOKEN is not None, "TELEGRAM_BOT_TOKEN environment variable is not set"
+
+BOT_BASE_URL = f"https://api.telegram.org/bot{TOKEN.strip()}"
 
 
 def update_commands():
-    commands: list[Command] = list(asdict(Commands).values())
+    commands: list[Command] = COMMANDS
     command_data = [
         {"command": command.name, "description": command.description} for command in commands
     ]
@@ -24,13 +25,13 @@ def update_commands():
 
 
 class TelegramBot:
-    def __init__(self, chat_id: str):
-        self.chat_id = chat_id
+    def __init__(self, chat: TelegramChat):
+        self.chat = chat
         print("Starting bot, token OK")
 
     def send_message(self, text: str):
-        print(f"Sending message '{text}' to chat {self.chat_id}")
+        print(f"Sending message |✏️| '{text}' to chat {self.chat.id}")
         url = BOT_BASE_URL + "/sendMessage"
-        data = {"chat_id": self.chat_id, "text": text}
+        data = {"chat_id": self.chat.id, "text": text}
         response = requests.post(url, data=data)
         response.raise_for_status()
